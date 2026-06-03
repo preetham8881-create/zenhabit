@@ -1,0 +1,1129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>ZenHabit Pro</title>
+  <meta name="theme-color" content="#0a0a14">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon.png">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,500;0,9..40,700;1,9..40,300&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --ink: #0a0a14;
+      --ink2: #12121f;
+      --ink3: #1a1a2e;
+      --glass: rgba(255,255,255,0.04);
+      --glass-border: rgba(255,255,255,0.08);
+      --glass-hover: rgba(255,255,255,0.08);
+      --violet: #7c6bfa;
+      --violet-glow: rgba(124,107,250,0.25);
+      --cyan: #22d3ee;
+      --mint: #34d399;
+      --rose: #fb7185;
+      --amber: #fbbf24;
+      --text: #f0f0ff;
+      --text-dim: rgba(240,240,255,0.45);
+      --text-mid: rgba(240,240,255,0.7);
+      --nav-h: 72px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+    html { height: 100%; }
+
+    body {
+      background: var(--ink);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      height: 100%;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    /* Ambient background blobs */
+    .ambient {
+      position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden;
+    }
+    .blob {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(80px);
+      opacity: 0.18;
+    }
+    .blob-1 { width: 280px; height: 280px; background: var(--violet); top: -80px; right: -60px; animation: blobFloat 8s ease-in-out infinite; }
+    .blob-2 { width: 200px; height: 200px; background: var(--cyan); bottom: 120px; left: -60px; animation: blobFloat 10s ease-in-out infinite reverse; }
+    .blob-3 { width: 150px; height: 150px; background: var(--mint); top: 40%; right: 20%; animation: blobFloat 12s ease-in-out infinite 2s; }
+
+    @keyframes blobFloat {
+      0%, 100% { transform: translate(0,0) scale(1); }
+      33% { transform: translate(12px,-18px) scale(1.05); }
+      66% { transform: translate(-8px,10px) scale(0.95); }
+    }
+
+    /* HEADER */
+    header {
+      position: relative; z-index: 10;
+      padding: calc(env(safe-area-inset-top) + 16px) 20px 14px;
+      display: flex; align-items: center; justify-content: space-between;
+      background: linear-gradient(180deg, rgba(10,10,20,0.98) 0%, rgba(10,10,20,0) 100%);
+    }
+
+    .logo-wrap { display: flex; align-items: center; gap: 8px; }
+    .logo-icon {
+      width: 34px; height: 34px;
+      background: linear-gradient(135deg, var(--violet), var(--cyan));
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.1rem;
+    }
+    .logo-text { font-family: 'Syne', sans-serif; font-size: 1.2rem; font-weight: 800; letter-spacing: -0.5px; }
+    .logo-text span { color: var(--violet); }
+
+    .header-right { display: flex; align-items: center; gap: 10px; }
+    .hdr-btn {
+      width: 36px; height: 36px; border-radius: 10px;
+      background: var(--glass); border: 1px solid var(--glass-border);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1rem; cursor: pointer;
+      transition: background 0.2s;
+    }
+    .hdr-btn:active { background: var(--glass-hover); }
+
+    /* Android badge */
+    #android-badge {
+      display: none;
+      background: linear-gradient(90deg, #34c759, #30d158);
+      color: white; font-size: 0.55rem; font-weight: 700;
+      padding: 2px 7px; border-radius: 20px; letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+
+    /* MAIN */
+    main {
+      flex: 1; overflow-y: auto; overflow-x: hidden;
+      padding: 10px 16px calc(var(--nav-h) + 20px + env(safe-area-inset-bottom));
+      position: relative; z-index: 5;
+      scrollbar-width: none;
+    }
+    main::-webkit-scrollbar { display: none; }
+
+    /* VIEWS */
+    .view { display: none; animation: viewIn 0.35s cubic-bezier(0.34,1.56,0.64,1) both; }
+    .view.active { display: block; }
+    @keyframes viewIn {
+      from { opacity: 0; transform: translateY(24px) scale(0.98); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    /* SECTION LABELS */
+    .section-label {
+      font-size: 0.65rem; font-weight: 700; letter-spacing: 2px;
+      text-transform: uppercase; color: var(--text-dim);
+      margin: 20px 0 10px;
+    }
+
+    /* STAT GRID */
+    .stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px; }
+    .stat-tile {
+      background: var(--glass);
+      border: 1px solid var(--glass-border);
+      border-radius: 18px; padding: 16px 10px;
+      text-align: center; position: relative; overflow: hidden;
+      transition: border-color 0.3s;
+    }
+    .stat-tile::before {
+      content: ''; position: absolute; inset: 0; opacity: 0;
+      background: radial-gradient(circle at 50% 0%, var(--violet-glow), transparent 70%);
+      transition: opacity 0.3s;
+    }
+    .stat-tile:active::before { opacity: 1; }
+    .stat-tile h3 { font-size: 0.58rem; color: var(--text-dim); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 6px; }
+    .stat-tile p { font-family: 'Syne', sans-serif; font-size: 1.25rem; font-weight: 700; }
+    .stat-tile p.violet { color: var(--violet); }
+    .stat-tile p.mint { color: var(--mint); }
+    .stat-tile p.amber { color: var(--amber); }
+
+    /* ADD HABIT CARD */
+    .add-card {
+      background: var(--glass);
+      border: 1px solid var(--glass-border);
+      border-radius: 22px; padding: 18px; margin-bottom: 20px;
+      position: relative; overflow: hidden;
+    }
+    .add-card::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
+      background: linear-gradient(90deg, transparent, var(--violet), transparent);
+      opacity: 0.5;
+    }
+    .add-card-title {
+      font-family: 'Syne', sans-serif; font-size: 0.9rem; font-weight: 700;
+      margin-bottom: 14px; color: var(--text-mid);
+    }
+    .input-row { display: flex; gap: 8px; margin-bottom: 12px; }
+    .emoji-input {
+      width: 48px; height: 48px; border-radius: 12px;
+      background: rgba(124,107,250,0.1); border: 1px solid rgba(124,107,250,0.3);
+      color: var(--text); font-size: 1.3rem; text-align: center;
+      outline: none; transition: border-color 0.2s;
+    }
+    .emoji-input:focus { border-color: var(--violet); }
+    .habit-input {
+      flex: 1; height: 48px; border-radius: 12px; padding: 0 14px;
+      background: var(--glass); border: 1px solid var(--glass-border);
+      color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 0.95rem;
+      outline: none; transition: border-color 0.2s;
+    }
+    .habit-input:focus { border-color: var(--violet); }
+    .habit-input::placeholder { color: var(--text-dim); }
+
+    /* Color picker */
+    .color-row { display: flex; gap: 8px; margin-bottom: 14px; align-items: center; }
+    .color-dot {
+      width: 26px; height: 26px; border-radius: 50%; cursor: pointer;
+      border: 2px solid transparent; transition: transform 0.15s, border-color 0.15s;
+      flex-shrink: 0;
+    }
+    .color-dot.selected { border-color: white; transform: scale(1.15); }
+    .color-label { font-size: 0.7rem; color: var(--text-dim); margin-right: 4px; }
+
+    .btn-create {
+      width: 100%; height: 48px; border-radius: 14px; border: none; cursor: pointer;
+      background: linear-gradient(135deg, var(--violet) 0%, #5b4fe8 100%);
+      color: white; font-family: 'Syne', sans-serif; font-size: 0.9rem; font-weight: 700;
+      letter-spacing: 0.5px;
+      box-shadow: 0 8px 24px rgba(124,107,250,0.35);
+      transition: transform 0.15s, box-shadow 0.15s;
+      position: relative; overflow: hidden;
+    }
+    .btn-create::after {
+      content: ''; position: absolute; inset: 0;
+      background: linear-gradient(180deg, rgba(255,255,255,0.12), transparent);
+    }
+    .btn-create:active { transform: scale(0.97); box-shadow: 0 4px 14px rgba(124,107,250,0.25); }
+
+    /* HABIT CARDS */
+    .habit-card {
+      background: var(--glass);
+      border: 1px solid var(--glass-border);
+      border-radius: 22px; padding: 16px; margin-bottom: 14px;
+      position: relative; overflow: hidden;
+      transition: border-color 0.3s, transform 0.2s;
+      animation: cardSlide 0.4s cubic-bezier(0.34,1.4,0.64,1) both;
+    }
+    @keyframes cardSlide {
+      from { opacity: 0; transform: translateX(-20px) scale(0.97); }
+      to { opacity: 1; transform: translateX(0) scale(1); }
+    }
+    .habit-card:active { transform: scale(0.99); }
+
+    .habit-accent-bar {
+      position: absolute; top: 0; left: 0; bottom: 0; width: 3px;
+      border-radius: 3px 0 0 3px;
+    }
+
+    .habit-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px; padding-left: 8px; }
+    .habit-left { display: flex; align-items: center; gap: 12px; }
+    .habit-emoji-wrap {
+      width: 46px; height: 46px; border-radius: 14px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.4rem; background: rgba(255,255,255,0.05);
+      border: 1px solid var(--glass-border);
+    }
+    .habit-name-wrap h3 { font-size: 0.95rem; font-weight: 600; letter-spacing: -0.2px; }
+    .habit-count { font-size: 0.7rem; color: var(--text-dim); margin-top: 2px; }
+
+    .habit-actions { display: flex; gap: 6px; align-items: center; }
+    .btn-del {
+      width: 30px; height: 30px; border-radius: 8px;
+      background: rgba(251,113,133,0.12); border: 1px solid rgba(251,113,133,0.2);
+      color: var(--rose); font-size: 0.8rem; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.2s;
+    }
+    .btn-del:active { background: rgba(251,113,133,0.25); }
+
+    /* Progress bar */
+    .habit-progress { padding-left: 8px; margin-bottom: 12px; }
+    .progress-label { display: flex; justify-content: space-between; font-size: 0.65rem; color: var(--text-dim); margin-bottom: 5px; }
+    .progress-track {
+      height: 4px; background: rgba(255,255,255,0.06); border-radius: 99px; overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%; border-radius: 99px;
+      transition: width 0.5s cubic-bezier(0.34,1.2,0.64,1);
+    }
+
+    /* Date + Mark area */
+    .habit-footer { padding-left: 8px; display: flex; gap: 8px; align-items: center; }
+    .date-input {
+      flex: 1; height: 40px; border-radius: 10px; padding: 0 12px;
+      background: rgba(255,255,255,0.04); border: 1px solid var(--glass-border);
+      color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 0.8rem;
+      outline: none; color-scheme: dark;
+    }
+    .btn-mark {
+      height: 40px; padding: 0 16px; border-radius: 10px; border: none; cursor: pointer;
+      font-family: 'DM Sans', sans-serif; font-size: 0.8rem; font-weight: 600;
+      transition: transform 0.15s, box-shadow 0.15s;
+      white-space: nowrap;
+    }
+    .btn-mark:active { transform: scale(0.95); }
+
+    /* Streak dots */
+    .streak-dots { display: flex; gap: 4px; padding-left: 8px; margin-bottom: 10px; }
+    .dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: rgba(255,255,255,0.08);
+      transition: background 0.3s, transform 0.3s;
+    }
+    .dot.filled { transform: scale(1.1); }
+
+    /* STATS VIEW */
+    .chart-wrap {
+      background: var(--glass); border: 1px solid var(--glass-border);
+      border-radius: 22px; padding: 20px; margin-bottom: 16px;
+    }
+    .chart-title { font-family: 'Syne', sans-serif; font-size: 1rem; font-weight: 700; margin-bottom: 16px; }
+    .chart-canvas-wrap { height: 200px; }
+
+    .habit-summary-list { display: flex; flex-direction: column; gap: 10px; }
+    .summary-row {
+      background: var(--glass); border: 1px solid var(--glass-border);
+      border-radius: 14px; padding: 14px 16px;
+      display: flex; align-items: center; gap: 12px;
+    }
+    .summary-emoji { font-size: 1.3rem; }
+    .summary-info { flex: 1; }
+    .summary-name { font-size: 0.85rem; font-weight: 600; }
+    .summary-meta { font-size: 0.7rem; color: var(--text-dim); margin-top: 2px; }
+    .summary-pct { font-family: 'Syne', sans-serif; font-size: 1rem; font-weight: 700; }
+
+    /* PROFILE VIEW */
+    .profile-hero {
+      text-align: center; padding: 20px 0 24px; margin-bottom: 16px;
+    }
+    .avatar-ring {
+      width: 84px; height: 84px; border-radius: 50%; margin: 0 auto 14px;
+      background: linear-gradient(135deg, var(--violet), var(--cyan));
+      padding: 3px;
+    }
+    .avatar-inner {
+      width: 100%; height: 100%; border-radius: 50%;
+      background: var(--ink3);
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'Syne', sans-serif; font-size: 1.6rem; font-weight: 800;
+    }
+    .profile-name { font-family: 'Syne', sans-serif; font-size: 1.3rem; font-weight: 800; margin-bottom: 4px; }
+    .profile-level {
+      display: inline-flex; align-items: center; gap: 5px;
+      background: rgba(124,107,250,0.15); color: var(--violet);
+      border: 1px solid rgba(124,107,250,0.3); border-radius: 20px;
+      padding: 4px 12px; font-size: 0.75rem; font-weight: 600;
+    }
+
+    .profile-card {
+      background: var(--glass); border: 1px solid var(--glass-border);
+      border-radius: 18px; padding: 16px; margin-bottom: 12px;
+    }
+    .profile-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; }
+    .profile-row:not(:last-child) { border-bottom: 1px solid var(--glass-border); }
+    .profile-row-label { font-size: 0.8rem; color: var(--text-dim); }
+    .profile-row-value { font-size: 0.85rem; font-weight: 600; }
+
+    /* Android exclusive section */
+    .android-section {
+      display: none;
+      background: linear-gradient(135deg, rgba(52,211,153,0.08), rgba(52,211,153,0.03));
+      border: 1px solid rgba(52,211,153,0.2);
+      border-radius: 18px; padding: 18px; margin-bottom: 12px;
+    }
+    .android-title {
+      display: flex; align-items: center; gap: 8px;
+      font-family: 'Syne', sans-serif; font-size: 0.9rem; font-weight: 700;
+      color: var(--mint); margin-bottom: 14px;
+    }
+    .android-feature-btn {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 14px; border-radius: 12px; margin-bottom: 8px;
+      background: rgba(255,255,255,0.04); border: 1px solid var(--glass-border);
+      cursor: pointer; transition: background 0.2s;
+    }
+    .android-feature-btn:last-child { margin-bottom: 0; }
+    .android-feature-btn:active { background: rgba(255,255,255,0.08); }
+    .afb-left { display: flex; align-items: center; gap: 10px; }
+    .afb-icon { font-size: 1.1rem; }
+    .afb-text h4 { font-size: 0.82rem; font-weight: 600; }
+    .afb-text p { font-size: 0.68rem; color: var(--text-dim); margin-top: 1px; }
+    .afb-arrow { color: var(--text-dim); font-size: 0.9rem; }
+    .toggle-switch {
+      width: 40px; height: 22px; border-radius: 11px;
+      background: var(--glass-border); position: relative; cursor: pointer;
+      transition: background 0.3s; border: 1px solid transparent;
+    }
+    .toggle-switch.on { background: var(--mint); }
+    .toggle-knob {
+      position: absolute; top: 2px; left: 2px;
+      width: 16px; height: 16px; border-radius: 50%;
+      background: white; transition: left 0.3s;
+    }
+    .toggle-switch.on .toggle-knob { left: 20px; }
+
+    /* CARE VIEW */
+    .care-hero {
+      text-align: center; padding: 24px 0 20px;
+    }
+    .care-icon { font-size: 3rem; margin-bottom: 12px; }
+    .care-title { font-family: 'Syne', sans-serif; font-size: 1.2rem; font-weight: 800; margin-bottom: 6px; }
+    .care-sub { font-size: 0.85rem; color: var(--text-dim); }
+
+    .care-card {
+      background: var(--glass); border: 1px solid var(--glass-border);
+      border-radius: 18px; padding: 18px; margin-bottom: 12px;
+    }
+    .care-card h3 { font-size: 0.85rem; font-weight: 700; margin-bottom: 10px; color: var(--text-mid); }
+    .care-contact {
+      display: flex; align-items: center; gap: 10px; padding: 10px 12px;
+      background: rgba(124,107,250,0.08); border-radius: 12px; border: 1px solid rgba(124,107,250,0.2);
+    }
+    .care-contact-icon { font-size: 1.2rem; }
+    .care-contact-info p { font-size: 0.82rem; font-weight: 600; }
+    .care-contact-info span { font-size: 0.7rem; color: var(--text-dim); }
+
+    /* TOAST */
+    #toast {
+      position: fixed; bottom: calc(var(--nav-h) + 20px); left: 50%; transform: translateX(-50%) translateY(20px);
+      background: rgba(30,30,50,0.95); backdrop-filter: blur(20px);
+      border: 1px solid var(--glass-border); border-radius: 14px;
+      padding: 10px 18px; font-size: 0.82rem; font-weight: 600;
+      z-index: 9999; opacity: 0; pointer-events: none;
+      transition: all 0.3s cubic-bezier(0.34,1.4,0.64,1);
+      white-space: nowrap;
+    }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    /* BOTTOM NAV */
+    nav {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      height: calc(var(--nav-h) + env(safe-area-inset-bottom));
+      background: rgba(10,10,20,0.92); backdrop-filter: blur(24px) saturate(1.5);
+      border-top: 1px solid var(--glass-border);
+      display: flex; align-items: flex-start; justify-content: space-around;
+      padding: 12px 8px 0;
+      z-index: 100;
+    }
+    .nav-item {
+      display: flex; flex-direction: column; align-items: center; gap: 4px;
+      color: var(--text-dim); font-size: 0.6rem; font-weight: 600;
+      letter-spacing: 0.5px; text-transform: uppercase;
+      cursor: pointer; flex: 1; padding: 2px 4px;
+      transition: color 0.2s; position: relative;
+    }
+    .nav-item.active { color: var(--violet); }
+    .nav-icon-wrap {
+      width: 38px; height: 32px; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.25rem; transition: background 0.2s, transform 0.2s;
+    }
+    .nav-item.active .nav-icon-wrap {
+      background: rgba(124,107,250,0.15);
+      transform: scale(1.05);
+    }
+    .nav-pip {
+      position: absolute; top: 6px; right: calc(50% - 22px);
+      width: 5px; height: 5px; border-radius: 50%;
+      background: var(--violet); opacity: 0;
+      transition: opacity 0.2s;
+    }
+    .nav-item.active .nav-pip { opacity: 1; }
+
+    /* Install banner */
+    #install-banner {
+      display: none;
+      position: fixed; top: calc(env(safe-area-inset-top) + 68px); left: 12px; right: 12px;
+      background: linear-gradient(135deg, rgba(124,107,250,0.95), rgba(91,79,232,0.95));
+      backdrop-filter: blur(12px);
+      border-radius: 18px; padding: 14px 16px;
+      z-index: 50; box-shadow: 0 8px 32px rgba(124,107,250,0.4);
+      animation: bannerSlide 0.4s cubic-bezier(0.34,1.4,0.64,1) both;
+    }
+    @keyframes bannerSlide {
+      from { opacity: 0; transform: translateY(-20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .banner-content { display: flex; align-items: center; gap: 12px; }
+    .banner-icon { font-size: 1.8rem; }
+    .banner-text { flex: 1; }
+    .banner-text h4 { font-family: 'Syne', sans-serif; font-size: 0.9rem; font-weight: 700; margin-bottom: 2px; }
+    .banner-text p { font-size: 0.72rem; opacity: 0.85; }
+    .banner-actions { display: flex; gap: 8px; margin-top: 12px; }
+    .btn-install {
+      flex: 1; height: 36px; border-radius: 10px; border: none; cursor: pointer;
+      background: white; color: var(--violet);
+      font-family: 'Syne', sans-serif; font-size: 0.78rem; font-weight: 800;
+    }
+    .btn-dismiss {
+      height: 36px; padding: 0 14px; border-radius: 10px;
+      background: rgba(255,255,255,0.2); border: none; color: white;
+      font-size: 0.75rem; font-weight: 600; cursor: pointer;
+    }
+
+    /* Completion animation */
+    @keyframes pop {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.3); }
+      100% { transform: scale(1); }
+    }
+    .pop-anim { animation: pop 0.35s ease; }
+
+    /* Ripple effect */
+    .ripple {
+      position: absolute; border-radius: 50%;
+      background: rgba(255,255,255,0.15);
+      transform: scale(0);
+      animation: rippleAnim 0.5s ease-out;
+      pointer-events: none;
+    }
+    @keyframes rippleAnim {
+      to { transform: scale(4); opacity: 0; }
+    }
+
+    /* Empty state */
+    .empty-state {
+      text-align: center; padding: 40px 20px;
+      color: var(--text-dim);
+    }
+    .empty-icon { font-size: 2.5rem; margin-bottom: 12px; opacity: 0.5; }
+    .empty-text { font-size: 0.85rem; }
+  </style>
+</head>
+<body>
+
+<div class="ambient">
+  <div class="blob blob-1"></div>
+  <div class="blob blob-2"></div>
+  <div class="blob blob-3"></div>
+</div>
+
+<header>
+  <div class="logo-wrap">
+    <div class="logo-icon">🌿</div>
+    <div class="logo-text">Zen<span>Habit</span></div>
+  </div>
+  <div class="header-right">
+    <span id="android-badge">Android</span>
+    <div class="hdr-btn" onclick="shareApp()" id="share-btn" style="display:none">🔗</div>
+    <div class="hdr-btn">🔔</div>
+  </div>
+</header>
+
+<!-- Android Install Banner -->
+<div id="install-banner">
+  <div class="banner-content">
+    <div class="banner-icon">📲</div>
+    <div class="banner-text">
+      <h4>Install ZenHabit</h4>
+      <p>Add to home screen for the best experience</p>
+    </div>
+  </div>
+  <div class="banner-actions">
+    <button class="btn-install" onclick="installApp()">Install Now</button>
+    <button class="btn-dismiss" onclick="dismissBanner()">Later</button>
+  </div>
+</div>
+
+<main>
+  <!-- DASHBOARD -->
+  <div id="dashboard" class="view active">
+    <div class="section-label">Overview</div>
+    <div class="stat-grid">
+      <div class="stat-tile">
+        <h3>Habits</h3>
+        <p id="total-habits" class="violet">0</p>
+      </div>
+      <div class="stat-tile">
+        <h3>Today</h3>
+        <p id="today-done" class="mint">0%</p>
+      </div>
+      <div class="stat-tile">
+        <h3>Best 🔥</h3>
+        <p id="top-streak" class="amber">0</p>
+      </div>
+    </div>
+
+    <div class="add-card">
+      <div class="add-card-title">New Habit</div>
+      <div class="input-row">
+        <input type="text" class="emoji-input" id="habit-emoji" placeholder="🎯" maxlength="2">
+        <input type="text" class="habit-input" id="habit-name" placeholder="e.g. Morning Yoga">
+      </div>
+      <div class="color-row">
+        <span class="color-label">Color</span>
+        <div class="color-dot selected" style="background:#7c6bfa" data-color="#7c6bfa" onclick="selectColor(this)"></div>
+        <div class="color-dot" style="background:#22d3ee" data-color="#22d3ee" onclick="selectColor(this)"></div>
+        <div class="color-dot" style="background:#34d399" data-color="#34d399" onclick="selectColor(this)"></div>
+        <div class="color-dot" style="background:#fbbf24" data-color="#fbbf24" onclick="selectColor(this)"></div>
+        <div class="color-dot" style="background:#fb7185" data-color="#fb7185" onclick="selectColor(this)"></div>
+      </div>
+      <button class="btn-create" onclick="addHabit()">＋ Create Habit</button>
+    </div>
+
+    <div class="section-label">My Habits</div>
+    <div id="habit-container"></div>
+  </div>
+
+  <!-- STATS -->
+  <div id="stats" class="view">
+    <div class="section-label">This Week</div>
+    <div class="chart-wrap">
+      <div class="chart-title">Daily Completions 📈</div>
+      <div class="chart-canvas-wrap">
+        <canvas id="weeklyChart"></canvas>
+      </div>
+    </div>
+
+    <div class="section-label">Habit Performance</div>
+    <div class="habit-summary-list" id="habit-summary"></div>
+  </div>
+
+  <!-- PROFILE -->
+  <div id="profile" class="view">
+    <div class="profile-hero">
+      <div class="avatar-ring">
+        <div class="avatar-inner" id="avatar-initials">JS</div>
+      </div>
+      <div class="profile-name" id="profile-name-display">John Smith</div>
+      <div class="profile-level">⚡ Level 5 — Habit Master</div>
+    </div>
+
+    <div class="profile-card">
+      <div class="profile-row">
+        <span class="profile-row-label">Email</span>
+        <span class="profile-row-value">john@zenhabit.app</span>
+      </div>
+      <div class="profile-row">
+        <span class="profile-row-label">Member since</span>
+        <span class="profile-row-value">Jun 2025</span>
+      </div>
+      <div class="profile-row">
+        <span class="profile-row-label">Total completions</span>
+        <span class="profile-row-value" id="total-completions">0</span>
+      </div>
+      <div class="profile-row" style="border-bottom: none;">
+        <span class="profile-row-label">Longest streak</span>
+        <span class="profile-row-value" id="best-streak-profile">0 days</span>
+      </div>
+    </div>
+
+    <!-- Android exclusive -->
+    <div class="android-section" id="android-exclusive">
+      <div class="android-title">
+        <span>🤖</span> Android Exclusive
+      </div>
+      <div class="android-feature-btn" onclick="requestNotifications()">
+        <div class="afb-left">
+          <span class="afb-icon">🔔</span>
+          <div class="afb-text">
+            <h4>Daily Reminders</h4>
+            <p>Get notified to complete your habits</p>
+          </div>
+        </div>
+        <div class="toggle-switch" id="notif-toggle" onclick="event.stopPropagation(); toggleNotifications(this)">
+          <div class="toggle-knob"></div>
+        </div>
+      </div>
+      <div class="android-feature-btn" onclick="shareApp()">
+        <div class="afb-left">
+          <span class="afb-icon">📤</span>
+          <div class="afb-text">
+            <h4>Share Progress</h4>
+            <p>Share your streak via Android Share Sheet</p>
+          </div>
+        </div>
+        <span class="afb-arrow">›</span>
+      </div>
+      <div class="android-feature-btn" onclick="vibrateDemo()">
+        <div class="afb-left">
+          <span class="afb-icon">📳</span>
+          <div class="afb-text">
+            <h4>Haptic Feedback</h4>
+            <p>Feel every habit completion</p>
+          </div>
+        </div>
+        <div class="toggle-switch on" id="haptic-toggle" onclick="event.stopPropagation(); toggleHaptic(this)">
+          <div class="toggle-knob"></div>
+        </div>
+      </div>
+      <div class="android-feature-btn" onclick="exportData()">
+        <div class="afb-left">
+          <span class="afb-icon">💾</span>
+          <div class="afb-text">
+            <h4>Export Data</h4>
+            <p>Download your habit history as JSON</p>
+          </div>
+        </div>
+        <span class="afb-arrow">›</span>
+      </div>
+    </div>
+
+    <div class="profile-card">
+      <div class="profile-row" style="border-bottom:none">
+        <span class="profile-row-label">App version</span>
+        <span class="profile-row-value" style="color:var(--text-dim)">2.0.0-pro</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- CARE -->
+  <div id="care" class="view">
+    <div class="care-hero">
+      <div class="care-icon">💬</div>
+      <div class="care-title">We're Here for You</div>
+      <div class="care-sub">Reach out anytime — we respond fast.</div>
+    </div>
+
+    <div class="care-card">
+      <h3>Contact Support</h3>
+      <div class="care-contact">
+        <span class="care-contact-icon">📧</span>
+        <div class="care-contact-info">
+          <p>help@zenhabit.app</p>
+          <span>Average reply time: ~2 hours</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="care-card">
+      <h3>Quick Actions</h3>
+      <div style="display: flex; flex-direction: column; gap: 8px;">
+        <div class="android-feature-btn">
+          <div class="afb-left">
+            <span class="afb-icon">📖</span>
+            <div class="afb-text">
+              <h4>Help Center</h4>
+              <p>Browse FAQs and guides</p>
+            </div>
+          </div>
+          <span class="afb-arrow">›</span>
+        </div>
+        <div class="android-feature-btn">
+          <div class="afb-left">
+            <span class="afb-icon">🐛</span>
+            <div class="afb-text">
+              <h4>Report a Bug</h4>
+              <p>Send device info automatically</p>
+            </div>
+          </div>
+          <span class="afb-arrow">›</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<div id="toast"></div>
+
+<nav>
+  <div class="nav-item active" onclick="showView('dashboard')">
+    <div class="nav-icon-wrap">🏠</div>
+    <span>Home</span>
+    <div class="nav-pip"></div>
+  </div>
+  <div class="nav-item" onclick="showView('stats')">
+    <div class="nav-icon-wrap">📊</div>
+    <span>Stats</span>
+    <div class="nav-pip"></div>
+  </div>
+  <div class="nav-item" onclick="showView('profile')">
+    <div class="nav-icon-wrap">👤</div>
+    <span>Profile</span>
+    <div class="nav-pip"></div>
+  </div>
+  <div class="nav-item" onclick="showView('care')">
+    <div class="nav-icon-wrap">💬</div>
+    <span>Care</span>
+    <div class="nav-pip"></div>
+  </div>
+</nav>
+
+<script>
+  // ─── STATE ───────────────────────────────────────────────────────────────────
+  let habits = JSON.parse(localStorage.getItem('zenhabit-v3')) || [];
+  let myChart = null;
+  let selectedColor = '#7c6bfa';
+  let deferredPrompt = null;
+  let hapticEnabled = JSON.parse(localStorage.getItem('haptic-enabled') ?? 'true');
+  let isAndroid = /android/i.test(navigator.userAgent);
+
+  // ─── ANDROID DETECTION ───────────────────────────────────────────────────────
+  function initAndroid() {
+    if (isAndroid) {
+      document.getElementById('android-badge').style.display = 'inline-flex';
+      document.getElementById('android-exclusive').style.display = 'block';
+      document.getElementById('share-btn').style.display = 'flex';
+      if (hapticEnabled) document.getElementById('haptic-toggle').classList.add('on');
+    }
+  }
+
+  // ─── PWA INSTALL (Android Chrome) ────────────────────────────────────────────
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    if (isAndroid && !localStorage.getItem('install-dismissed')) {
+      setTimeout(() => {
+        document.getElementById('install-banner').style.display = 'block';
+      }, 2000);
+    }
+  });
+
+  function installApp() {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      deferredPrompt.userChoice.then(c => {
+        if (c.outcome === 'accepted') showToast('✅ Installing ZenHabit!');
+        deferredPrompt = null;
+        dismissBanner();
+      });
+    } else {
+      showToast('📲 Open in Chrome to install');
+    }
+  }
+
+  function dismissBanner() {
+    document.getElementById('install-banner').style.display = 'none';
+    localStorage.setItem('install-dismissed', '1');
+  }
+
+  // ─── ANDROID SHARE ───────────────────────────────────────────────────────────
+  async function shareApp() {
+    const total = habits.reduce((a, h) => a + h.history.length, 0);
+    const text = `🌿 I've completed ${total} habits on ZenHabit Pro! Join me: https://zenhabit.app`;
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: 'ZenHabit Pro', text, url: 'https://zenhabit.app' });
+        haptic([50]);
+      } catch(e) { /* cancelled */ }
+    } else {
+      navigator.clipboard?.writeText(text);
+      showToast('📋 Stats copied to clipboard!');
+    }
+  }
+
+  // ─── HAPTIC FEEDBACK ─────────────────────────────────────────────────────────
+  function haptic(pattern = [40]) {
+    if (hapticEnabled && navigator.vibrate) navigator.vibrate(pattern);
+  }
+
+  function vibrateDemo() {
+    haptic([30, 60, 30, 60, 80]);
+    showToast('📳 Haptic feedback works!');
+  }
+
+  function toggleHaptic(el) {
+    el.classList.toggle('on');
+    hapticEnabled = el.classList.contains('on');
+    localStorage.setItem('haptic-enabled', JSON.stringify(hapticEnabled));
+    haptic([40]);
+    showToast(hapticEnabled ? '📳 Haptics enabled' : '🔕 Haptics disabled');
+  }
+
+  // ─── NOTIFICATIONS ───────────────────────────────────────────────────────────
+  async function requestNotifications() {
+    if (!('Notification' in window)) { showToast('❌ Not supported on this browser'); return; }
+    const p = await Notification.requestPermission();
+    const toggle = document.getElementById('notif-toggle');
+    if (p === 'granted') {
+      toggle.classList.add('on');
+      haptic([30, 50]);
+      showToast('🔔 Reminders enabled!');
+      new Notification('ZenHabit Pro', { body: "You're all set! We'll remind you daily.", icon: '' });
+    } else {
+      toggle.classList.remove('on');
+      showToast('⚠️ Permission denied in settings');
+    }
+  }
+
+  function toggleNotifications(el) {
+    if (el.classList.contains('on')) {
+      el.classList.remove('on');
+      showToast('🔕 Reminders turned off');
+    } else {
+      requestNotifications();
+    }
+  }
+
+  // ─── EXPORT ──────────────────────────────────────────────────────────────────
+  function exportData() {
+    const blob = new Blob([JSON.stringify(habits, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'zenhabit-data.json'; a.click();
+    URL.revokeObjectURL(url);
+    haptic([40, 30, 40]);
+    showToast('💾 Data exported!');
+  }
+
+  // ─── COLOR PICKER ────────────────────────────────────────────────────────────
+  function selectColor(el) {
+    document.querySelectorAll('.color-dot').forEach(d => d.classList.remove('selected'));
+    el.classList.add('selected');
+    selectedColor = el.dataset.color;
+    haptic([20]);
+  }
+
+  // ─── HABIT CRUD ──────────────────────────────────────────────────────────────
+  function save() {
+    localStorage.setItem('zenhabit-v3', JSON.stringify(habits));
+    render();
+    if (document.getElementById('stats').classList.contains('active')) updateGraph();
+    updateStats();
+  }
+
+  function addHabit() {
+    const name = document.getElementById('habit-name').value.trim();
+    const emoji = document.getElementById('habit-emoji').value.trim() || '🎯';
+    if (!name) { showToast('✏️ Enter a habit name'); return; }
+    habits.push({ id: Date.now(), name, emoji, color: selectedColor, history: [] });
+    document.getElementById('habit-name').value = '';
+    document.getElementById('habit-emoji').value = '';
+    haptic([30, 40, 60]);
+    showToast('🎉 Habit created!');
+    save();
+  }
+
+  function markForDate(id, dateInputId, btnEl) {
+    const d = document.getElementById(dateInputId).value;
+    if (!d) return;
+    const habit = habits.find(h => h.id === id);
+    if (habit.history.includes(d)) { showToast('✅ Already done this day!'); return; }
+    habit.history.push(d);
+    haptic([20, 40, 20]);
+    if (btnEl) { btnEl.classList.add('pop-anim'); setTimeout(() => btnEl.classList.remove('pop-anim'), 400); }
+    showToast('🔥 Habit marked done!');
+    save();
+  }
+
+  function deleteHabit(id) {
+    habits = habits.filter(h => h.id !== id);
+    haptic([60, 30]);
+    showToast('🗑️ Habit removed');
+    save();
+  }
+
+  function addRipple(el) {
+    const r = document.createElement('span');
+    r.className = 'ripple';
+    r.style.cssText = `width: 60px; height: 60px; left: 50%; top: 50%; margin: -30px;`;
+    el.style.position = 'relative';
+    el.appendChild(r);
+    setTimeout(() => r.remove(), 600);
+  }
+
+  // ─── STREAK CALC ─────────────────────────────────────────────────────────────
+  function calcStreak(history) {
+    if (!history.length) return 0;
+    const sorted = [...history].sort((a,b) => b.localeCompare(a));
+    let streak = 0, cur = new Date(sorted[0]);
+    for (let d of sorted) {
+      const dd = new Date(d);
+      const diff = Math.round((cur - dd) / 86400000);
+      if (diff <= 1) { streak++; cur = dd; }
+      else break;
+    }
+    return streak;
+  }
+
+  function calcMonthPct(history) {
+    const now = new Date();
+    const daysInMonth = new Date(now.getFullYear(), now.getMonth()+1, 0).getDate();
+    const monthStr = now.toISOString().slice(0,7);
+    const done = history.filter(d => d.startsWith(monthStr)).length;
+    return Math.round((done / daysInMonth) * 100);
+  }
+
+  // ─── RENDER ──────────────────────────────────────────────────────────────────
+  function render() {
+    const container = document.getElementById('habit-container');
+    container.innerHTML = '';
+
+    if (!habits.length) {
+      container.innerHTML = `<div class="empty-state"><div class="empty-icon">🌱</div><div class="empty-text">No habits yet.<br>Create your first one above!</div></div>`;
+      return;
+    }
+
+    const today = new Date().toISOString().split('T')[0];
+
+    habits.forEach((habit, i) => {
+      const card = document.createElement('div');
+      card.className = 'habit-card';
+      card.style.animationDelay = `${i * 60}ms`;
+
+      const dateId = `date-${habit.id}`;
+      const streak = calcStreak(habit.history);
+      const pct = calcMonthPct(habit.history);
+      const doneToday = habit.history.includes(today);
+
+      // Last 7 dots
+      const last7 = [...Array(7)].map((_,j) => {
+        const d = new Date(); d.setDate(d.getDate() - (6 - j));
+        return d.toISOString().split('T')[0];
+      });
+
+      const dotsHTML = last7.map(d =>
+        `<div class="dot ${habit.history.includes(d) ? 'filled' : ''}" style="${habit.history.includes(d) ? `background:${habit.color||'var(--violet)'}` : ''}"></div>`
+      ).join('');
+
+      card.innerHTML = `
+        <div class="habit-accent-bar" style="background: ${habit.color || 'var(--violet)'}"></div>
+        <div class="habit-top">
+          <div class="habit-left">
+            <div class="habit-emoji-wrap">${habit.emoji}</div>
+            <div class="habit-name-wrap">
+              <h3>${habit.name}</h3>
+              <div class="habit-count">🔥 ${streak} day streak · ${habit.history.length} total</div>
+            </div>
+          </div>
+          <div class="habit-actions">
+            ${doneToday ? `<span style="font-size:0.7rem;color:var(--mint);font-weight:700;padding:4px 8px;background:rgba(52,211,153,0.1);border-radius:8px;border:1px solid rgba(52,211,153,0.25);">✓ Done</span>` : ''}
+            <button class="btn-del" onclick="deleteHabit(${habit.id})">✕</button>
+          </div>
+        </div>
+        <div class="streak-dots">${dotsHTML}</div>
+        <div class="habit-progress">
+          <div class="progress-label"><span>Month Progress</span><span>${pct}%</span></div>
+          <div class="progress-track">
+            <div class="progress-fill" style="width:${pct}%;background:${habit.color||'var(--violet)'}"></div>
+          </div>
+        </div>
+        <div class="habit-footer">
+          <input type="date" id="${dateId}" class="date-input" value="${today}">
+          <button class="btn-mark" id="btn-${habit.id}"
+            style="background:${habit.color||'var(--violet)'};color:white;box-shadow:0 4px 16px ${habit.color||'var(--violet)'}44"
+            onclick="markForDate(${habit.id},'${dateId}',this);addRipple(this)">
+            Mark Done ✓
+          </button>
+        </div>
+      `;
+      container.appendChild(card);
+    });
+  }
+
+  function updateStats() {
+    const today = new Date().toISOString().split('T')[0];
+    const totalHabits = habits.length;
+    const doneToday = habits.filter(h => h.history.includes(today)).length;
+    const pct = totalHabits ? Math.round((doneToday / totalHabits) * 100) : 0;
+    const topStreak = habits.reduce((max, h) => Math.max(max, calcStreak(h.history)), 0);
+
+    document.getElementById('total-habits').textContent = totalHabits;
+    document.getElementById('today-done').textContent = pct + '%';
+    document.getElementById('top-streak').textContent = topStreak;
+    document.getElementById('total-completions').textContent = habits.reduce((a, h) => a + h.history.length, 0);
+    document.getElementById('best-streak-profile').textContent = topStreak + ' days';
+  }
+
+  // ─── GRAPH ───────────────────────────────────────────────────────────────────
+  function updateGraph() {
+    const last7 = [...Array(7)].map((_, i) => {
+      const d = new Date(); d.setDate(d.getDate() - (6 - i));
+      return d.toISOString().split('T')[0];
+    });
+    const data = last7.map(d => habits.reduce((a, h) => a + (h.history.includes(d) ? 1 : 0), 0));
+    const labels = last7.map(d => { const dd = new Date(d); return ['Su','Mo','Tu','We','Th','Fr','Sa'][dd.getDay()]; });
+
+    const ctx = document.getElementById('weeklyChart').getContext('2d');
+    if (myChart) myChart.destroy();
+    myChart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [{
+          label: 'Completions',
+          data,
+          backgroundColor: labels.map(() => 'rgba(124,107,250,0.5)'),
+          borderColor: labels.map(() => 'rgba(124,107,250,1)'),
+          borderWidth: 1,
+          borderRadius: 8,
+          hoverBackgroundColor: 'rgba(124,107,250,0.8)',
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          y: { beginAtZero: true, ticks: { stepSize: 1, color: 'rgba(240,240,255,0.4)', font: { family: 'DM Sans' } }, grid: { color: 'rgba(255,255,255,0.05)' }, border: { display: false } },
+          x: { ticks: { color: 'rgba(240,240,255,0.5)', font: { family: 'DM Sans', weight: '600' } }, grid: { display: false }, border: { display: false } }
+        }
+      }
+    });
+
+    // Habit summary
+    const summaryEl = document.getElementById('habit-summary');
+    summaryEl.innerHTML = '';
+    if (!habits.length) { summaryEl.innerHTML = `<div class="empty-state"><div class="empty-icon">📊</div><div class="empty-text">No habits to analyze yet</div></div>`; return; }
+    habits.forEach(h => {
+      const pct = calcMonthPct(h.history);
+      const streak = calcStreak(h.history);
+      const row = document.createElement('div');
+      row.className = 'summary-row';
+      row.innerHTML = `
+        <span class="summary-emoji">${h.emoji}</span>
+        <div class="summary-info">
+          <div class="summary-name">${h.name}</div>
+          <div class="summary-meta">🔥 ${streak} day streak · ${h.history.length} total completions</div>
+        </div>
+        <div class="summary-pct" style="color:${h.color||'var(--violet)'}">${pct}%</div>
+      `;
+      summaryEl.appendChild(row);
+    });
+  }
+
+  // ─── NAVIGATION ──────────────────────────────────────────────────────────────
+  function showView(viewId) {
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+    document.getElementById(viewId).classList.add('active');
+    const map = ['dashboard','stats','profile','care'];
+    const idx = map.indexOf(viewId);
+    if (idx >= 0) document.querySelectorAll('.nav-item')[idx].classList.add('active');
+    if (viewId === 'stats') updateGraph();
+    haptic([15]);
+    // Dismiss install banner when navigating
+    if (viewId !== 'dashboard') document.getElementById('install-banner').style.display = 'none';
+  }
+
+  // ─── TOAST ───────────────────────────────────────────────────────────────────
+  let toastTimer;
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
+  }
+
+  // ─── SERVICE WORKER REGISTRATION ─────────────────────────────────────────────
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js')
+        .then(reg => console.log('SW registered:', reg.scope))
+        .catch(err => console.log('SW registration failed:', err));
+    });
+  }
+
+  // ─── INIT ────────────────────────────────────────────────────────────────────
+  initAndroid();
+  render();
+  updateStats();
+
+  // Keyboard: submit on Enter
+  document.getElementById('habit-name').addEventListener('keydown', e => { if (e.key === 'Enter') addHabit(); });
+</script>
+</body>
+</html>
